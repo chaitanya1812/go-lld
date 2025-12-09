@@ -2,7 +2,6 @@ package cachettl
 
 import (
 	"container/heap"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -61,26 +60,24 @@ type heapq struct {
 }
 
 func (q *heapq) cleanPastTTL() {
-	fmt.Println("cleaning process started in heapq : ...", q.pq.Len())
 	for q.pq.Len() > 0 && q.pq[0].expiry.Before(time.Now()) {
 		delete(q.byKey, q.pq[0].cache_key)
 		heap.Pop(&q.pq)
 	}
-	fmt.Println("cleaning process ended in heapq : ...", q.pq.Len())
-
 }
 
 func (q *heapq) upsert(key string, value any, expiry time.Time) {
 	// update the existing item
 	if item, ok := q.byKey[key]; ok {
+		// update with the new values
 		item.cache_val = value
 		item.expiry = expiry
 		item.cache_key = key
-		q.pq.update(item, key, expiry)
+		q.pq.update(item)
 		return
 	}
 
-	// new item
+	// create new item
 	item := &Item{cache_val: value, cache_key: key, expiry: expiry}
 	heap.Push(&q.pq, item)
 	q.byKey[key] = item
@@ -88,7 +85,7 @@ func (q *heapq) upsert(key string, value any, expiry time.Time) {
 
 func (q *heapq) Get(key string) (any, bool) {
 	item, ok := q.byKey[key]
-	// if not present or expired
+	// if not present or expired | don't delete here, because that requires write lock.
 	if !ok || item.expiry.Before(time.Now()) {
 		return nil, false
 	}
@@ -138,6 +135,6 @@ func (pq *PriorityQueue) Pop() any {
 }
 
 // update modifies the priority and value of an Item in the queue.
-func (pq *PriorityQueue) update(item *Item, key string, expiry time.Time) {
+func (pq *PriorityQueue) update(item *Item) {
 	heap.Fix(pq, item.index)
 }
