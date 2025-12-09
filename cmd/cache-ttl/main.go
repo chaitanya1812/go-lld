@@ -1,6 +1,6 @@
 package main
 
-// go run main/cache_main.go
+// go run cmd/cache-ttl/main.go
 import (
 	"fmt"
 	cache "go-lld/cache-ttl"
