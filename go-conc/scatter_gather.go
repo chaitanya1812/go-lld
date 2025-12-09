@@ -15,9 +15,12 @@ func Scatter_gather() {
 	var wg sync.WaitGroup
 	numFacts := 10
 	results := make(chan string, numFacts)
-	for range numFacts {
+	for i := 0; i < numFacts; i++ {
+		// add to wait group before calling go routine
 		wg.Add(1)
 		go func() {
+			// mark as done after the execution of go routine
+			// should be triggered at the end, so first defer
 			defer wg.Done()
 			resp, err := http.Get(url)
 			if err != nil {
@@ -30,15 +33,19 @@ func Scatter_gather() {
 				results <- fmt.Sprintf("Unable to find the fact %s", err.Error())
 				return
 			}
-			results <- string(bytes)
+			results <- string(bytes) + fmt.Sprintf("id : %d", i)
 		}()
 	}
-	go func(){
+	// wait for all the go routines to complete and close the results
+	// using go routine becuase we can consume the avaialble results while this go-routine takes care about waiting and closing channel.
+	go func() {
 		wg.Wait()
-		close(results)
+		// triggers signal that says "no more values will be sent".
+		close(results) // closing channel is mandatory to terminate the loop of consuming channel
 	}()
 
-	for res := range results{
+	// consume the results when something is available in results
+	for res := range results {
 		fmt.Println(res)
 	}
 
